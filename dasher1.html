@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Dash Tool</title>
+    <style>
+        :root {
+            --ios-purple: #bf5af2;
+            --ios-green: #30d158;
+            --ios-red: #ff453a;
+            --ios-orange: #ff9f0a;
+            --background-dark: #000000;
+            --card-dark: #1c1c1e;
+            --input-dark: #2c2c2e;
+            --border-dark: #3a3a3c;
+            --text-primary-dark: #ffffff;
+            --text-secondary-dark: #8e8e93;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-primary-dark);
+            margin: 0;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: contain;
+        }
+
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; min-height: 100vh; box-sizing: border-box; }
+        .header { text-align: center; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+        .header p { margin: 5px 0 0; font-size: 14px; color: var(--text-secondary-dark); }
+        .form-group-header { font-size: 13px; color: var(--text-secondary-dark); text-transform: uppercase; margin: 20px 0 8px 15px; }
+        
+        /* Modern iOS-style Form List */
+        .form-list { list-style: none; margin: 0; padding: 0; background-color: var(--card-dark); border-radius: 12px; }
+        .form-list li { display: flex; justify-content: space-between; align-items: center; padding: 11px 15px; border-bottom: 0.5px solid var(--border-dark); transition: background-color 0.2s; }
+        .form-list li:last-child { border-bottom: none; }
+        .form-list label { font-size: 17px; }
+        
+        .form-list input, .form-list select {
+            background: none; border: none;
+            /* NEW (v9.1): Text color is now always white */
+            color: var(--text-primary-dark);
+            font-size: 17px; text-align: right;
+            width: 60%; /* Give more space for input */
+            outline: none; -webkit-appearance: none; appearance: none;
+        }
+        .form-list input::placeholder { color: var(--text-secondary-dark); }
+        
+        /* NEW (v9.1): Dropdown text is now left-aligned within its right-aligned container */
+        .form-list select {
+            color: var(--text-primary-dark);
+            text-align: right;
+            padding-right: 5px; /* Adjust alignment */
+        }
+        .form-list select option { color: var(--text-primary-dark); background-color: var(--input-dark); }
+        
+        /* NEW (v9.1): Focus indicator now highlights the row, not the text */
+        .form-list li:focus-within {
+            background-color: var(--input-dark);
+        }
+
+        .button-primary { width: 100%; padding: 14px; border: none; border-radius: 8px; background-color: var(--ios-purple); color: white; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 20px; }
+        .button-secondary { width: 100%; padding: 10px; border: none; border-radius: 8px; background-color: var(--card-dark); color: var(--ios-purple); font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 10px; }
+
+        /* --- NEW (v9.1): Redesigned Report --- */
+        #report-container { display: none; margin-top: 25px; }
+        #report-container h2 { text-align: center; font-size: 16px; font-weight: 600; margin: 10px 0 15px 0; }
+        .report-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding: 12px 0; border-bottom: 0.5px solid var(--border-dark); }
+        .report-item:first-of-type { border-top: 0.5px solid var(--border-dark); }
+        .report-item .label { color: var(--text-primary-dark); font-size: 16px; }
+        .report-item .value-group { text-align: right; }
+        .report-item .primary-value { display: block; font-size: 16px; font-weight: 500; color: var(--text-primary-dark); }
+        .report-item .secondary-score { display: block; font-size: 13px; color: var(--text-secondary-dark); }
+        .report-item .multiplier { font-size: 12px; color: var(--text-secondary-dark); margin-left: 4px; }
+
+        /* Modal & Animation Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; z-index: 1000; }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-content { background: var(--card-dark); padding: 25px; border-radius: 20px; text-align: center; transform: scale(0.7); opacity: 0; border: 3px solid transparent; position: relative; overflow: hidden; }
+        .modal-content p { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-secondary-dark); }
+        .modal-content .score-display { font-size: 96px; font-weight: bold; color: var(--text-primary-dark); line-height: 1; margin: 10px 0 20px; }
+        .modal-content .button-secondary { background-color: var(--input-dark); }
+        
+        @keyframes supernova-pop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes supernova-glow { 0%, 100% { box-shadow: 0 0 50px -10px var(--ios-purple); } 50% { box-shadow: 0 0 70px 0px var(--ios-orange); } }
+        .modal-overlay.anim-supernova .modal-content { animation: supernova-pop 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards, supernova-glow 1.5s ease-in-out infinite; border-color: var(--ios-orange); }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .modal-overlay.anim-pulse .modal-content { animation: supernova-pop 0.4s forwards, pulse 1s ease-in-out 0.4s; }
+        
+        @keyframes glitch-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+        .modal-overlay.anim-glitch .modal-content { animation: supernova-pop 0.2s forwards, glitch-shake 0.3s forwards; border-color: var(--ios-red); }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="time-selection-screen" class="screen active">
+            <div class="header"><h1>Welcome</h1><p>Select your time block to begin.</p></div>
+            <p class="form-group-header">Time & Day of Week</p>
+            <ul class="form-list"><li><select id="time-block-select" style="width: 100%; text-align: left;"></select></li></ul>
+            <button id="start-session-btn" class="button-primary">Start Dashing</button>
+        </div>
+
+        <div id="evaluation-screen" class="screen">
+            <div class="header"><h1>Dash Tool v9.1</h1><p id="session-info"></p></div>
+            <form id="order-form">
+                <p class="form-group-header">Order Details</p>
+                <ul class="form-list">
+                    <li><label for="payout">Payout</label><input type="number" id="payout" placeholder="$0.00" step="0.01" required></li>
+                    <li><label for="distance">Distance</label><input type="number" id="distance" placeholder="0.0 mi" step="0.1" required></li>
+                    <li><label for="restaurant-code">Restaurant</label><input type="text" id="restaurant-code" placeholder="(first 5 letters)" maxlength="5" autocapitalize="characters"></li>
+                </ul>
+                <p class="form-group-header">Context</p>
+                <ul class="form-list">
+                     <li>
+                        <label for="dist-category">Drop-off Zone</label>
+                        <select id="dist-category" required>
+                            <option value="s">S (Short)</option>
+                            <option value="sm">SM (Short-Medium)</option>
+                            <option value="m">M (Medium)</option>
+                            <option value="ml">ML (Medium-Long)</option>
+                            <option value="l">L (Long)</option>
+                        </select>
+                    </li>
+                    <li><label for="current-ar">Current AR</label><input type="number" id="current-ar" placeholder="0%" min="0" max="100" required></li>
+                </ul>
+                <button type="submit" class="button-primary">Evaluate Order</button>
+            </form>
+            
+            <div id="report-container">
+                <h2>Evaluation Report</h2>
+                <div id="report-details"></div>
+            </div>
+            <button id="evaluate-another-btn" class="button-secondary" style="display:none;">Evaluate Another</button>
+        </div>
+    </div>
+    
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <p>FINAL SCORE</p>
+            <div id="modal-score-display" class="score-display"></div>
+            <button id="view-breakdown-btn" class="button-secondary">View Breakdown</button>
+        </div>
+    </div>
+
+<script>
+// =================================================================================================================
+// JAVASCRIPT LOGIC (v9.1)
+// =================================================================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    // --- CONFIGURATION ---
+    const WEIGHTS = {"PAY_PER_MILE": 60, "TOTAL_PAYOUT": 5, "END_LOCATION_FACTOR": 10, "RESTAURANT_WAIT": 5, "STRATEGIC_AR_IMPACT": 20};
+    const RESTAURANT_KNOWLEDGE_BASE = {'MCDON': 4, 'WENDY': 2, 'CHILI': 3, 'TACOB': 2, 'POPEY': 2, 'CHEEF': 4, 'CHICF': 1, 'CHIPO': 1, 'DAVES': 2, 'DEFAULT': 2.5};
+    const TIME_DAY_MULTIPLIERS = {"Weekday Morning (6-9am)": 1.15, "Weekday Mid-Day (9am-11am)": 1.30, "Weekday Lunch (11am-1:30pm)": 1.0, "Weekday Afternoon (1:30-4pm)": 1.40, "Weekday Dinner (4-9pm)": 1.0, "Weekday Late Night (9pm-12am)": 1.10, "Weekend Morning (6-9am)": 1.10, "Weekend Mid-Day (9am-11am)": 1.20, "Weekend Lunch (11am-1:30pm)": 1.0, "Weekend Afternoon (1:30-4pm)": 1.15, "Weekend Dinner (4-9pm)": 1.0, "Weekend Late Night (9pm-12am)": 1.05};
+
+    // --- SCORING FUNCTIONS ---
+    const score_pay_per_mile = (p, d) => { if (d <= 0) return 0; const s = ((p / Math.max(d, 0.3)) / 1.50) * 70; return Math.min(s, 200); };
+    const score_total_payout = (p) => { if (p < 1.01) return 0; const s = (Math.log(p) / Math.log(27.00)) * 100; return Math.min(s, 150); };
+    const score_restaurant_wait = (rc) => { const r = RESTAURANT_KNOWLEDGE_BASE[rc.toUpperCase()] || RESTAURANT_KNOWLEDGE_BASE['DEFAULT']; if (r === 1) return 100; if (r === 2) return 80; if (r === 3) return 40; if (r === 4) return 20; if (r === 2.5) return 60; return 80; };
+    const score_strategic_ar_impact = (ar) => { if (ar >= 50 && ar < 60) return 150 - 15 * (ar - 50); if (ar >= 70 && ar < 80) return 75 - 7.5 * (ar - 70); if (ar >= 60) return 10; return 150; };
+    const score_end_location_compass = (dc) => ({ 's': 100, 'sm': 80, 'm': 60, 'ml': 40, 'l': 20 }[dc] || 60);
+
+    // --- Get DOM Elements ---
+    const timeSelect = document.getElementById('time-block-select');
+    const startBtn = document.getElementById('start-session-btn');
+    const orderForm = document.getElementById('order-form');
+    const evaluateAnotherBtn = document.getElementById('evaluate-another-btn');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalScoreDisplay = document.getElementById('modal-score-display');
+    const viewBreakdownBtn = document.getElementById('view-breakdown-btn');
+    const reportContainer = document.getElementById('report-container');
+    
+    let session_multiplier = 1.0;
+
+    // --- Populate Time Selection & Handle Session Start ---
+    for (const key in TIME_DAY_MULTIPLIERS) {
+        const option = document.createElement('option');
+        option.value = TIME_DAY_MULTIPLIERS[key];
+        option.textContent = key;
+        timeSelect.appendChild(option);
+    }
+    startBtn.addEventListener('click', () => {
+        session_multiplier = parseFloat(timeSelect.value);
+        const session_multiplier_name = timeSelect.options[timeSelect.selectedIndex].text;
+        document.getElementById('session-info').textContent = `${session_multiplier_name} (x${session_multiplier})`;
+        document.getElementById('time-selection-screen').classList.remove('active');
+        document.getElementById('evaluation-screen').classList.add('active');
+    });
+
+    // --- Main Evaluation Logic ---
+    orderForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const order_data = { payout: parseFloat(document.getElementById('payout').value) || 0, distance: parseFloat(document.getElementById('distance').value) || 0, restaurant_code: document.getElementById('restaurant-code').value, dist_category: document.getElementById('dist-category').value, current_ar: parseInt(document.getElementById('current-ar').value) || 0, };
+        evaluate_order(order_data, session_multiplier);
+    });
+
+    function evaluate_order(order_data, time_multiplier) {
+        const scores = { "PAY_PER_MILE": score_pay_per_mile(order_data.payout, order_data.distance) * time_multiplier, "TOTAL_PAYOUT": score_total_payout(order_data.payout) * time_multiplier, "RESTAURANT_WAIT": score_restaurant_wait(order_data.restaurant_code), "STRATEGIC_AR_IMPACT": score_strategic_ar_impact(order_data.current_ar), "END_LOCATION_FACTOR": score_end_location_compass(order_data.dist_category),};
+        let total_weighted_score = 0;
+        for (const key in WEIGHTS) total_weighted_score += scores[key] * (WEIGHTS[key] / 100.0);
+        const uncapped_score = Math.round(total_weighted_score);
+
+        let score_display_string = "", animation_class = "anim-pulse";
+        const final_capped_score = Math.min(100, uncapped_score);
+
+        if (uncapped_score >= 150) { score_display_string = "100++"; }
+        else if (uncapped_score >= 125) { score_display_string = "100+"; }
+        else { score_display_string = final_capped_score.toString(); }
+        
+        if (uncapped_score >= 85) { animation_class = "anim-supernova"; }
+        else if (uncapped_score < 40) { animation_class = "anim-glitch"; }
+
+        modalScoreDisplay.textContent = score_display_string;
+        modalOverlay.className = 'modal-overlay';
+        void modalOverlay.offsetWidth;
+        modalOverlay.classList.add(animation_class, 'visible');
+
+        // --- NEW (v9.1): Prepare Redesigned Breakdown Report ---
+        const reportDetails = document.getElementById('report-details');
+        reportDetails.innerHTML = '';
+        const payout = order_data.payout;
+        const ppm = order_data.distance > 0 ? (payout / order_data.distance) : 0;
+        const report_lines = {
+            "TOTAL_PAYOUT": `($${payout.toFixed(2)})`,
+            "PAY_PER_MILE": `($${ppm.toFixed(2)}/mi)`,
+            "STRATEGIC_AR_IMPACT": `(@ ${order_data.current_ar}%)`,
+            "RESTAURANT_WAIT": `(Rated ${RESTAURANT_KNOWLEDGE_BASE[order_data.restaurant_code.toUpperCase()] || RESTAURANT_KNOWLEDGE_BASE['DEFAULT']})`,
+            "END_LOCATION_FACTOR": `(Zone: ${order_data.dist_category.toUpperCase()})`
+        };
+
+        for (const key in WEIGHTS) {
+            const multiplier_text = (key === "PAY_PER_MILE" || key === "TOTAL_PAYOUT") ? `<span class="multiplier">(x${time_multiplier})</span>` : "";
+            const item = document.createElement('div');
+            item.className = 'report-item';
+            // This HTML structure is now changed for the new report style
+            item.innerHTML = `
+                <span class="label">${key.replace(/_/g, ' ')}</span>
+                <div class="value-group">
+                    <span class="primary-value">${report_lines[key]}</span>
+                    <span class="secondary-score">Score: ${Math.round(scores[key])} / 100 ${multiplier_text}</span>
+                </div>
+            `;
+            reportDetails.appendChild(item);
+        }
+    }
+
+    // --- Handle Modal & Report Visibility ---
+    viewBreakdownBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('visible');
+        reportContainer.style.display = 'block';
+        evaluateAnotherBtn.style.display = 'block';
+    });
+    evaluateAnotherBtn.addEventListener('click', () => {
+        orderForm.reset();
+        reportContainer.style.display = 'none';
+        evaluateAnotherBtn.style.display = 'none';
+        document.getElementById('payout').focus();
+    });
+});
+</script>
+</body>
+</html>
